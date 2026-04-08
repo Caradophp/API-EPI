@@ -1,6 +1,6 @@
 from flask import Blueprint, json, request, jsonify
-from app.db.mongo_connection import Connection
-from app.extra.tipo_usuario import TipoUsuario
+from db.mongo_connection import Connection
+from extra.tipo_usuario import TipoUsuario
 
 
 dashboard_bp  = Blueprint('dashboard', __name__, url_prefix='/api/dashboard')

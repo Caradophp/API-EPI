@@ -1,7 +1,7 @@
 import pymongo
 from flask import json
 from datetime import datetime, timedelta, timezone
-from app.model.sessao import Sessao
+from model.sessao import Sessao
 from bson import ObjectId
 
 class Util:

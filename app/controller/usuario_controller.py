@@ -1,7 +1,7 @@
 from flask import Blueprint, json, request, jsonify, make_response
-from app.model.usuario import Usuario
-from app.db.mongo_connection import Connection
-from app.extra.utils import Util
+from model.usuario import Usuario
+from db.mongo_connection import Connection
+from extra.utils import Util
 
 usuario_bp = Blueprint('usuario', __name__, url_prefix='/api/usuarios')
 db = Connection()
