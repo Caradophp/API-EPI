@@ -1,6 +1,6 @@
 class Usuario:
     
-    def __init__(self, nome, email, senha, telefone, usuario, status):
+    def __init__(self, nome, email, senha, telefone, usuario, status, tipo):
         self._nome = nome
 
         self._email = email
@@ -8,6 +8,7 @@ class Usuario:
         self._telefone = telefone
         self._usuario = usuario
         self._status = status
+        self._tipo = tipo
 
         @property
         def nome(self):
@@ -56,4 +57,12 @@ class Usuario:
         @status.setter
         def status(self, valor):
             self._status = valor
+            
+        @property
+        def tipo(self):
+            return self._tipo
+        
+        @tipo.setter
+        def tipo(self, tipo):
+            self._tipo = tipo
     

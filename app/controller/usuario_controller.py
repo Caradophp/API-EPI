@@ -42,7 +42,8 @@ class UsuarioController:
                 email=dados.get('email'),
                 senha=dados.get('senha'),
                 telefone=dados.get('telefone'),
-                status=True
+                status=True,
+                tipo=dados.get('tipo')
             )
             
             resultado = db.inserir('usuarios', usuario.__dict__)
