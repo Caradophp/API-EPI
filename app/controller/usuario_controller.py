@@ -2,6 +2,7 @@ from flask import Blueprint, json, request, jsonify, make_response
 from model.usuario import Usuario
 from db.mongo_connection import Connection
 from extra.utils import Util
+from db.mysql_connection import Mysql
 
 usuario_bp = Blueprint('usuario', __name__, url_prefix='/api/usuarios')
 db = Connection()
@@ -55,7 +56,8 @@ class UsuarioController:
             if not Util.validSession(Util.getUserSession(request)):
                 return jsonify({"erro": "Usuário não logado"})
             
-            usuarios = db.buscar_todos('usuarios')
+            usuarios = db.buscar_todos() # Mysql.execute("SELECT id_usuario, nome, email, telefone, status, usuario FROM usuarios")
+            # print(usuarios)
             return jsonify(usuarios), 200
         except Exception as e:
             return jsonify({'erro': str(e)}), 500
