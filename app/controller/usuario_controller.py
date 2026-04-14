@@ -120,7 +120,7 @@ class UsuarioController:
             usuario_encontrado = db.get_connection().find_one({"_usuario": credenciais.get('nome_usuario', '').strip()})
             
             if not usuario_encontrado:
-                return jsonify({"erro": "Usuário não inválido"})
+                return jsonify({"erro": "Usuário inválido"})
             else:
                 if usuario_encontrado.get('_senha') == credenciais.get('senha_usuario', '').strip():
                     id_sessao = Util.registerSessionInDatabase(usuario_encontrado.get('_id'))
