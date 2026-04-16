@@ -8,7 +8,15 @@ class Util:
     
     @staticmethod
     def getUserSession(request):
-        return json.loads(request.cookies.get('user-info'))
+        cookie_content = request.cookies.get('user-info')
+    
+        if cookie_content is None:
+            return None
+            
+        try:
+            return json.loads(cookie_content)
+        except (json.JSONDecodeError, TypeError):
+            return None
     
     @staticmethod
     def validSession(session):

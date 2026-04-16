@@ -150,7 +150,12 @@ class UsuarioController:
         
     @usuario_bp.route('/validar', methods = ['GET'])
     def validaSessao():
-        if not Util.validSession(Util.getUserSession(request)):
-            return jsonify({"erro": "Sessão inválida"}), 403
-        else:
-            return jsonify({"sucesso": "Sessão válida"}),200
+        session_data = Util.getUserSession(request)
+        
+        if session_data is None:
+            return jsonify({"erro": "Nenhuma sessão encontrada"}), 401
+
+        if not Util.validSession(session_data):
+            return jsonify({"erro": "Sessão inválida ou expirada"}), 403
+        
+        return jsonify({"sucesso": "Sessão válida"}), 200
