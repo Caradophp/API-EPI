@@ -57,7 +57,7 @@ class UsuarioController:
             if not Util.validSession(Util.getUserSession(request)):
                 return jsonify({"erro": "Usuário não logado"})
             
-            usuarios = db.buscar_todos() # Mysql.execute("SELECT id_usuario, nome, email, telefone, status, usuario FROM usuarios")
+            usuarios = db.buscar_todos("usuarios") # Mysql.execute("SELECT id_usuario, nome, email, telefone, status, usuario FROM usuarios")
             # print(usuarios)
             return jsonify(usuarios), 200
         except Exception as e:
@@ -137,7 +137,7 @@ class UsuarioController:
                         json.dumps(usuario_cookie),  # transforma em string
                         httponly=True,               # mais seguro (não acessível via JS)
                         secure=False,               # True se usar HTTPS
-                        samesite='Lax'
+                        samesite='Lax' 
                     )
 
                     return resp
@@ -146,3 +146,11 @@ class UsuarioController:
             
         except Exception as e:
             return jsonify({'erro': str(e)}), 500
+        
+        
+    @usuario_bp.route('/validar', methods = ['GET'])
+    def validaSessao():
+        if not Util.validSession(Util.getUserSession(request)):
+            return jsonify({"erro": "Sessão inválida"}), 403
+        else:
+            return jsonify({"sucesso": "Sessão válida"}),200
