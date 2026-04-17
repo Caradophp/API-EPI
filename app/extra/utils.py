@@ -1,5 +1,5 @@
 import pymongo
-from flask import json
+from flask import json, make_response, jsonify
 from datetime import datetime, timedelta, timezone
 from model.sessao import Sessao
 from bson import ObjectId
@@ -20,11 +20,12 @@ class Util:
     
     @staticmethod
     def validSession(session):
-        print(session)
+        
+        if session is None:
+            return False
+        
         dbAccess = Util._getDbAccessOnSessionCollection()
         sessao_usuario = dbAccess.find_one({"_id": ObjectId(session.get("id"))})
-       
-        print(sessao_usuario)
        
         if not sessao_usuario:
             return False  
@@ -50,3 +51,9 @@ class Util:
         mydb = client["mydatabase"]
         mycol = mydb["sessao"]
         return mycol
+    
+    @staticmethod
+    def destroySession():
+        resp = make_response(jsonify({"mensagem": "Logout realizado"}))
+        resp.delete_cookie('user-info')
+        return resp

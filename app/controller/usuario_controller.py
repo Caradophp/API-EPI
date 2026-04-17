@@ -7,7 +7,6 @@ from db.mysql_connection import Mysql
 usuario_bp = Blueprint('usuario', __name__, url_prefix='/api/usuarios')
 db = Connection()
 
-
 class UsuarioController:
     
     def __init__(self, app):
@@ -149,7 +148,7 @@ class UsuarioController:
         
         
     @usuario_bp.route('/validar', methods = ['GET'])
-    def validaSessao():
+    def valida_sessao():
         session_data = Util.getUserSession(request)
         
         if session_data is None:
@@ -159,3 +158,7 @@ class UsuarioController:
             return jsonify({"erro": "Sessão inválida ou expirada"}), 403
         
         return jsonify({"sucesso": "Sessão válida"}), 200
+    
+    @usuario_bp.route('/logout', methods = ['GET'])
+    def do_logout():
+        return Util.destroySession()
