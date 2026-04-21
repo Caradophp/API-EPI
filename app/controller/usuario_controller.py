@@ -3,6 +3,7 @@ from model.usuario import Usuario
 from db.mongo_connection import Connection
 from extra.utils import Util
 from db.mysql_connection import Mysql
+from extra.email_service import Email
 
 usuario_bp = Blueprint('usuario', __name__, url_prefix='/api/usuarios')
 db = Connection()
@@ -33,7 +34,7 @@ class UsuarioController:
             ultimo_nome = partes_nome[-1].lower()
             nome_usuario = f"{primeiro_nome}.{ultimo_nome}"
             
-            db.get_connection().find(nome_completo)
+            # db.get_connection().find(nome_completo)
             
             usuario = Usuario(
                 nome=nome_completo,
@@ -46,6 +47,7 @@ class UsuarioController:
             )
             
             resultado = db.inserir('usuarios', usuario.__dict__)
+            Email.enviar_email_acesso(nome_completo, nome_usuario, dados.get('senha'), dados.get('email'))
             return jsonify({'mensagem': 'Usuário criado', 'id': str(resultado)}), 201
         except Exception as e:
             return jsonify({'erro': str(e)}), 500
