@@ -4,6 +4,7 @@ from db.mongo_connection import Connection
 from extra.utils import Util
 from db.mysql_connection import Mysql
 from extra.email_service import Email
+import uuid
 
 usuario_bp = Blueprint('usuario', __name__, url_prefix='/api/usuarios')
 db = Connection()
@@ -36,18 +37,21 @@ class UsuarioController:
             
             # db.get_connection().find(nome_completo)
             
+            senha_gerada = uuid.uuid4().hex
+            
             usuario = Usuario(
                 nome=nome_completo,
                 usuario=nome_usuario,
                 email=dados.get('email'),
-                senha=dados.get('senha'),
+                senha=senha_gerada,
                 telefone=dados.get('telefone'),
                 status=True,
-                tipo=dados.get('tipo')
+                tipo=dados.get('tipo'),
+                primeiro_acesso=True
             )
             
             resultado = db.inserir('usuarios', usuario.__dict__)
-            Email.enviar_email_acesso(nome_completo, nome_usuario, dados.get('senha'), dados.get('email'))
+            Email.enviar_email_acesso(nome_completo, nome_usuario, senha_gerada, dados.get('email'))
             return jsonify({'mensagem': 'Usuário criado', 'id': str(resultado)}), 201
         except Exception as e:
             return jsonify({'erro': str(e)}), 500
@@ -131,20 +135,44 @@ class UsuarioController:
                         "tipo": usuario_encontrado.get('_tipo')  # gestor ou funcionario
                     }
 
-                    resp = make_response({"mensagem": "Login realizado com sucesso"})
-                    
-                    resp.set_cookie(
-                        'user-info',
-                        json.dumps(usuario_cookie),  # transforma em string
-                        httponly=True,               # mais seguro (não acessível via JS)
-                        secure=False,               # True se usar HTTPS
-                        samesite='Lax' 
-                    )
+                    if usuario_encontrado.get('_primeiro_acesso'):
+                        resp = make_response({"mensagem": "Primeiro acesso, altere a senha por seguança"})
+                        return resp;
+                    else:
+                        resp = make_response({"mensagem": "Login realizado com sucesso"})
+                        
+                        resp.set_cookie(
+                            'user-info',
+                            json.dumps(usuario_cookie),  # transforma em string
+                            httponly=True,               # mais seguro (não acessível via JS)
+                            secure=False,               # True se usar HTTPS
+                            samesite='Lax' 
+                        )
 
-                    return resp
+                        return resp
                 else:
                     return jsonify({"erro": "Senha inválida"})
             
+        except Exception as e:
+            return jsonify({'erro': str(e)}), 500
+        
+    
+    @usuario_bp.route('/alterar-senha', methods = ['POST'])
+    def alterar_senha():
+        dados_troca = request.get_json()
+        
+        try:
+            db.get_connection().update_one(
+                {"_email": dados_troca.get("email")},
+                {"$set": {"_senha": dados_troca.get("senha_nova")}}
+            )
+            
+            db.get_connection().update_one(
+                {"_email": dados_troca.get("email")},
+                {"$set": {"_primeiro_acesso": False}}
+            )
+            
+            return jsonify({'sucesso': 'Senha alterada com sucesso'}), 200
         except Exception as e:
             return jsonify({'erro': str(e)}), 500
         

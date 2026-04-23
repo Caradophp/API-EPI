@@ -1,6 +1,6 @@
 class Usuario:
     
-    def __init__(self, nome, email, senha, telefone, usuario, status, tipo):
+    def __init__(self, nome, email, senha, telefone, usuario, status, tipo, primeiro_acesso):
         self._nome = nome
 
         self._email = email
@@ -9,6 +9,7 @@ class Usuario:
         self._usuario = usuario
         self._status = status
         self._tipo = tipo
+        self._primeiro_acesso = primeiro_acesso
 
         @property
         def nome(self):
@@ -65,4 +66,12 @@ class Usuario:
         @tipo.setter
         def tipo(self, tipo):
             self._tipo = tipo
+            
+        @property
+        def primeiro_acesso(self):
+            return self._primeiro_acesso
+        
+        @primeiro_acesso.setter
+        def primeiro_acesso(self, primeiro_acesso):
+            self._primeiro_acesso = primeiro_acesso
     
