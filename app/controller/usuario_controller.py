@@ -117,10 +117,10 @@ class UsuarioController:
             credenciais = request.get_json()
             
             if not credenciais.get('nome_usuario', '').strip():
-                return jsonify({"aviso": "Usuário deve ser informado"})
+                return jsonify({"erro": "Usuário deve ser informado"})
             
             if not credenciais.get('senha_usuario', '').strip():
-                return jsonify({"aviso": "Senha deve ser informada"})
+                return jsonify({"erro": "Senha deve ser informada"})
             
             usuario_encontrado = db.get_connection().find_one({"_usuario": credenciais.get('nome_usuario', '').strip()})
             
@@ -136,7 +136,7 @@ class UsuarioController:
                     }
 
                     if usuario_encontrado.get('_primeiro_acesso'):
-                        resp = make_response({"mensagem": "Primeiro acesso, altere a senha por seguança"})
+                        resp = make_response({"aviso": "Primeiro acesso, altere a senha por seguança"})
                         return resp;
                     else:
                         resp = make_response({"mensagem": "Login realizado com sucesso"})
@@ -163,12 +163,12 @@ class UsuarioController:
         
         try:
             db.get_connection().update_one(
-                {"_email": dados_troca.get("email")},
+                {"_usuario": dados_troca.get("usuario")},
                 {"$set": {"_senha": dados_troca.get("senha_nova")}}
             )
             
             db.get_connection().update_one(
-                {"_email": dados_troca.get("email")},
+                {"_usuario": dados_troca.get("usuario")},
                 {"$set": {"_primeiro_acesso": False}}
             )
             
