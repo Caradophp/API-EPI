@@ -26,7 +26,7 @@ class DashboardController:
         usuario_acessando = db.buscar_por_id('usuarios', user_info.get('id'))
         
         if usuario_acessando.get('tipo') != TipoUsuario.GESTOR.value:
-            dados = db.buscar_todos('usuarios')
+            dados = db.buscar_todos('epis')
             return jsonify(dados), 200
         
         if usuario_acessando.get('tipo') == TipoUsuario.FUNCIONARIO.value:
