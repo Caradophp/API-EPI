@@ -1,13 +1,11 @@
 from flask import Blueprint, json, request, jsonify, make_response
 from model.usuario import Usuario
-from db.mongo_connection import Connection
 from extra.utils import Util
 from db.mysql_connection import Mysql
 from extra.email_service import Email
 import uuid
 
 usuario_bp = Blueprint('usuario', __name__, url_prefix='/api/usuarios')
-db = Connection()
 
 class UsuarioController:
     
@@ -17,9 +15,8 @@ class UsuarioController:
     @usuario_bp.route('', methods=['POST'])
     def criar_usuario():
         try:
-            
             if not Util.validSession(Util.getUserSession(request)):
-                return jsonify({"erro": "Usuário não logado"})
+                return jsonify({"erro": "Usuário não logado"}), 401
             
             dados = request.get_json()
             nome_completo = dados.get('nome', '').strip()
@@ -31,153 +28,159 @@ class UsuarioController:
             if len(partes_nome) < 2:
                 return jsonify({'erro': 'Forneça pelo menos primeiro e último nome'}), 400
             
-            primeiro_nome = partes_nome[0].lower()
-            ultimo_nome = partes_nome[-1].lower()
-            nome_usuario = f"{primeiro_nome}.{ultimo_nome}"
-            
-            # db.get_connection().find(nome_completo)
-            
+            nome_usuario = f"{partes_nome[0].lower()}.{partes_nome[-1].lower()}"
             senha_gerada = uuid.uuid4().hex
             
-            usuario = Usuario(
-                nome=nome_completo,
-                usuario=nome_usuario,
-                email=dados.get('email'),
-                senha=senha_gerada,
-                telefone=dados.get('telefone'),
-                status=True,
-                tipo=dados.get('tipo'),
-                primeiro_acesso=True
+            sql = """
+                INSERT INTO usuarios (nome, usuario, email, senha, telefone, status, tipo, primeiro_acesso) 
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+            """
+            params = (
+                nome_completo,
+                nome_usuario,
+                dados.get('email'),
+                senha_gerada,
+                dados.get('telefone'),
+                True,
+                dados.get('tipo'),
+                True
             )
             
-            resultado = db.inserir('usuarios', usuario.__dict__)
+            id_gerado = Mysql.execute(sql, params)
             Email.enviar_email_acesso(nome_completo, nome_usuario, senha_gerada, dados.get('email'))
-            return jsonify({'mensagem': 'Usuário criado', 'id': str(resultado)}), 201
+            
+            return jsonify({'mensagem': 'Usuário criado', 'id': id_gerado}), 201
         except Exception as e:
             return jsonify({'erro': str(e)}), 500
-    
+
     @usuario_bp.route('', methods=['GET'])
     def listar_usuarios():
         try:
             if not Util.validSession(Util.getUserSession(request)):
-                return jsonify({"erro": "Usuário não logado"})
+                return jsonify({"erro": "Usuário não logado"}), 401
             
-            usuarios = db.buscar_todos("usuarios") # Mysql.execute("SELECT id_usuario, nome, email, telefone, status, usuario FROM usuarios")
-            # print(usuarios)
+            usuarios = Mysql.execute("SELECT id, nome, email, telefone, status, usuario, tipo FROM usuarios")
             return jsonify(usuarios), 200
         except Exception as e:
             return jsonify({'erro': str(e)}), 500
-    
+
     @usuario_bp.route('/<id>', methods=['GET'])
     def obter_usuario(id):
         try:
-            
             if not Util.validSession(Util.getUserSession(request)):
-                return jsonify({"erro": "Usuário não logado"})
+                return jsonify({"erro": "Usuário não logado"}), 401
             
-            usuario = db.buscar_por_id('usuarios', id)
-            if not usuario:
+            resultado = Mysql.execute("SELECT * FROM usuarios WHERE id = %s", (id,))
+            if not resultado:
                 return jsonify({'erro': 'Usuário não encontrado'}), 404
-            return jsonify(usuario), 200
+                
+            return jsonify(resultado[0]), 200
         except Exception as e:
             return jsonify({'erro': str(e)}), 500
-    
+
     @usuario_bp.route('/<id>', methods=['PUT'])
     def atualizar_usuario(id):
         try:
-            
             if not Util.validSession(Util.getUserSession(request)):
-                return jsonify({"erro": "Usuário não logado"})
+                return jsonify({"erro": "Usuário não logado"}), 401
             
             dados = request.get_json()
-            resultado = db.atualizar('usuarios', id, dados)
-            if resultado.modified_count == 0:
-                return jsonify({'erro': 'Usuário não encontrado'}), 404
+            colunas = ", ".join([f"{k} = %s" for k in dados.keys()])
+            valores = list(dados.values())
+            valores.append(id)
+            
+            sql = f"UPDATE usuarios SET {colunas} WHERE id = %s"
+            Mysql.execute(sql, tuple(valores))
+            
             return jsonify({'mensagem': 'Usuário atualizado'}), 200
         except Exception as e:
             return jsonify({'erro': str(e)}), 500
-    
+
     @usuario_bp.route('/<id>', methods=['DELETE'])
     def deletar_usuario(id):
         try:
-            
             if not Util.validSession(Util.getUserSession(request)):
-                return jsonify({"erro": "Usuário não logado"})
+                return jsonify({"erro": "Usuário não logado"}), 401
             
-            resultado = db.deletar('usuarios', id)
-            if resultado.deleted_count == 0:
-                return jsonify({'erro': 'Usuário não encontrado'}), 404
+            Mysql.execute("DELETE FROM usuarios WHERE id = %s", (id,))
             return jsonify({'mensagem': 'Usuário deletado'}), 200
         except Exception as e:
             return jsonify({'erro': str(e)}), 500
     
-    @usuario_bp.route('/login', methods = ['POST'])
+    @usuario_bp.route('/login', methods=['POST'])
     def login():
         try:
             credenciais = request.get_json()
             
-            if not credenciais.get('nome_usuario', '').strip():
-                return jsonify({"erro": "Usuário deve ser informado"})
+            nome_usuario = credenciais.get('nome_usuario', '').strip()
+            senha_usuario = credenciais.get('senha_usuario', '').strip()
+
+            if not nome_usuario:
+                return jsonify({"erro": "Usuário deve ser informado"}), 400
             
-            if not credenciais.get('senha_usuario', '').strip():
-                return jsonify({"erro": "Senha deve ser informada"})
+            if not senha_usuario:
+                return jsonify({"erro": "Senha deve ser informada"}), 400
             
-            usuario_encontrado = db.get_connection().find_one({"_usuario": credenciais.get('nome_usuario', '').strip()})
+            sql = "SELECT * FROM usuarios WHERE usuario = %s"
+            resultados = Mysql.execute(sql, (nome_usuario,))
             
-            if not usuario_encontrado:
-                return jsonify({"erro": "Usuário inválido"})
+            if not resultados:
+                return jsonify({"erro": "Usuário inválido"}), 401
+                
+            usuario_encontrado = resultados[0]
+            
+            if usuario_encontrado.get('senha') == senha_usuario:
+                
+                id_sessao = Util.registerSessionInDatabase(usuario_encontrado.get('id'))
+                
+                usuario_cookie = {
+                    "id": str(id_sessao),
+                    "nome": usuario_encontrado.get('nome'),
+                    "tipo": usuario_encontrado.get('tipo')
+                }
+
+                if usuario_encontrado.get('primeiro_acesso'):
+                    return jsonify({
+                        "aviso": "Primeiro acesso, altere a senha por segurança",
+                        "id_usuario": usuario_encontrado.get('id')
+                    }), 200
+                
+                resp = make_response(jsonify({"mensagem": "Login realizado com sucesso"}))
+                
+                resp.set_cookie(
+                    'user-info',
+                    json.dumps(usuario_cookie),
+                    httponly=True,
+                    secure=False,
+                    samesite='Lax'
+                )
+
+                return resp
             else:
-                if usuario_encontrado.get('_senha') == credenciais.get('senha_usuario', '').strip():
-                    id_sessao = Util.registerSessionInDatabase(usuario_encontrado.get('_id'))
-                    usuario_cookie = {
-                        "id": str(id_sessao),
-                        "nome": usuario_encontrado.get('_nome'),
-                        "tipo": usuario_encontrado.get('_tipo')  # gestor ou funcionario
-                    }
-
-                    if usuario_encontrado.get('_primeiro_acesso'):
-                        resp = make_response({"aviso": "Primeiro acesso, altere a senha por seguança"})
-                        return resp;
-                    else:
-                        resp = make_response({"mensagem": "Login realizado com sucesso"})
-                        
-                        resp.set_cookie(
-                            'user-info',
-                            json.dumps(usuario_cookie),  # transforma em string
-                            httponly=True,               # mais seguro (não acessível via JS)
-                            secure=False,               # True se usar HTTPS
-                            samesite='Lax' 
-                        )
-
-                        return resp
-                else:
-                    return jsonify({"erro": "Senha inválida"})
+                return jsonify({"erro": "Senha inválida"}), 401
             
         except Exception as e:
-            return jsonify({'erro': str(e)}), 500
+            print(f"Erro no login: {e}")
+            return jsonify({'erro': "Erro interno no servidor"}), 500
         
     
-    @usuario_bp.route('/alterar-senha', methods = ['POST'])
+    @usuario_bp.route('/alterar-senha', methods=['POST'])
     def alterar_senha():
         dados_troca = request.get_json()
         
         try:
-            db.get_connection().update_one(
-                {"_usuario": dados_troca.get("usuario")},
-                {"$set": {"_senha": dados_troca.get("senha_nova")}}
-            )
-            
-            db.get_connection().update_one(
-                {"_usuario": dados_troca.get("usuario")},
-                {"$set": {"_primeiro_acesso": False}}
-            )
+            sql = "UPDATE usuarios SET senha = %s, primeiro_acesso = %s WHERE usuario = %s"
+            Mysql.execute(sql, (
+                dados_troca.get("senha_nova"),
+                False,
+                dados_troca.get("usuario")
+            ))
             
             return jsonify({'sucesso': 'Senha alterada com sucesso'}), 200
         except Exception as e:
             return jsonify({'erro': str(e)}), 500
-        
-        
-    @usuario_bp.route('/validar', methods = ['GET'])
+
+    @usuario_bp.route('/validar', methods=['GET'])
     def valida_sessao():
         session_data = Util.getUserSession(request)
         
@@ -188,7 +191,12 @@ class UsuarioController:
             return jsonify({"erro": "Sessão inválida ou expirada"}), 403
         
         return jsonify({"sucesso": "Sessão válida"}), 200
-    
-    @usuario_bp.route('/logout', methods = ['GET'])
+
+    @usuario_bp.route('/logout', methods=['GET'])
     def do_logout():
+        
+        session_data = Util.getUserSession(request)
+        
+        Mysql.execute("DELETE FROM sessao WHERE id = %s", (session_data.get("id"),))
+        
         return Util.destroySession()
