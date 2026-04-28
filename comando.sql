@@ -1,3 +1,11 @@
+CREATE DATABASE epis;
+
+USE epis;
+
+CREATE USER 'epi_api_user'@'localhost' IDENTIFIED BY '123Mudar';
+
+GRANT ALL PRIVILEGES ON epis.* TO 'epi_api_user'@'localhost';
+
 CREATE TABLE IF NOT EXISTS epis (
     id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
     nome VARCHAR(100) NOT NULL,
